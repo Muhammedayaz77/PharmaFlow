@@ -1,156 +1,118 @@
 # PharmaFlow — by Hind HealthCare
 
-## Project Structure
+PharmaFlow is the multi-tenant pharma wholesale management platform under Hind HealthCare / Hind Tech Group.
 
-PharmaFlow is a multi-tenant pharma wholesale management platform developed under **Hind HealthCare**, the healthcare technology vertical of **Hind Tech Group**. Hind Pharma is one customer/shop tenant using the product. The web application is one shared multi-tenant PharmaFlow application. Customers/shops are tenants in the same production database and are isolated by authenticated business relationships.
+## Deployment target
 
-```text
-PharmaFlow/
-├── web/
-│   ├── Backend/
-│   ├── database/
-│   ├── data/
-│   ├── Helper/
-│   ├── Models/
-│   ├── View/
-│   ├── View Model/
-│   └── Assets/
-├── android/
-│   ├── Backend/
-│   ├── database/
-│   ├── data/
-│   ├── Helper/
-│   └── app/
-└── ios/
-    ├── Backend/
-    ├── database/
-    ├── data/
-    ├── Helper/
-    └── HindPharmaApp/
+Production hosting:
+
+- cPanel / CloudLinux Passenger
+- FastAPI + Python
+- MySQL
+- Live host: `hindhealthcare.hindtechgroup.co.in`
+
+The repository also supports local development with SQLite.
+
+## Production architecture
+
+```
+Browser
+  ↓
+hindhealthcare.hindtechgroup.co.in
+  ↓
+cPanel Passenger
+  ↓
+web/Backend/passenger_wsgi.py
+  ↓
+FastAPI app in web/Backend/main.py
+  ↓
+MySQL selected by DATABASE_URL
 ```
 
-The root contains project-level documentation and CI/tooling only. Runtime/backend/database/data dependencies are not shared from the root between clients.
+## Canonical backend files
 
-## FINAL TESTING LINKS
+```
+web/
+├── Backend/
+│   ├── main.py
+│   ├── database.py
+│   ├── passenger_wsgi.py
+│   ├── requirements.txt
+│   └── Helper/
+├── View/
+├── View Model/
+├── Assets/
+└── ...
+```
 
-### Final tenant URL structure
+## cPanel Python Application
 
-`https://hindhealthcare.hindtechgroup.co.in/pharmaflow/{customer-slug}`
-
-Examples:
-
-- `https://hindhealthcare.hindtechgroup.co.in/pharmaflow/xyz-pharma`
-- `https://hindhealthcare.hindtechgroup.co.in/pharmaflow/abc-pharma`
-- `https://hindhealthcare.hindtechgroup.co.in/pharmaflow/hind-pharma`
-
-All customers use the same PharmaFlow application and Home template; tenant data is loaded dynamically from the customer slug and protected APIs use the authenticated business identity.
-
-Use these links in this order. **HTG Super Admin is a completely separate group-level flow from all Hind Pharma shop users.**
-
-### 1. HTG Super Admin — group-level system login
-
-**Login:** https://muhammedayaz77.github.io/PharmaFlow/View/htg-super-admin-login.html
-
-After successful login it opens the HTG Super Admin Dashboard automatically.
-
-- Username: `Muhammed`
-- Dashboard: https://muhammedayaz77.github.io/PharmaFlow/View/htg-super-admin.html
-
-HTG Super Admin is the parent-level control role. It manages HTG business units/tenant shops and their business Admin accounts. It never enters a shop Home through this flow.
-
-### 2. Hind Pharma — Shop Home
-
-**Shop Home:** https://hindhealthcare.hindtechgroup.co.in/pharmaflow/hind-pharma
-
-- Admin username: `Ayaz`
-- Employees:
-  - Aman — `aman`
-  - Rafe — `rafe`
-  - Furkhan — `furkhan`
-
-Hind Pharma is the populated testing tenant and keeps the existing medical/product data.
-
-### 3. India Medical Agency — Shop Home
-
-**Shop Home:** https://hindhealthcare.hindtechgroup.co.in/pharmaflow/india-medical-agency
-
-- Admin username: `riyaz`
-- Temporary testing data: **0 medicals, 0 products, 1 admin user**
-
-The India Medical Agency tenant has its own shop identity and logo. It must never display Hind Pharma's shop name.
-
-## FINAL ROLE FLOW
-
-### HTG Super Admin
-
-`HTG Super Admin Login → HTG Super Admin Dashboard`
-
-HTG Super Admin is above individual business Admins and is not a shop user.
-
-### PharmaFlow — by Hind HealthCare Admin
-
-`Hind Pharma Shop Home → Admin Dashboard → manage Hind Pharma business`
-
-### Manager
-
-`Shop Home → Employee work + Manager Dashboard → Logout`
-
-### Employee
-
-`Shop Home → Daily Calling / Start Order → Logout`
-
-The hierarchy is:
-
-`HTG Super Admin → Business Admin → Manager → Employee`
-
-For Hind Pharma specifically:
-
-`HTG Super Admin → Hind Pharma Admin → Manager → Employee`
-
-## FINAL ORDER FLOW
-
-Exactly the same for Admin, Manager and Employee:
-
-`Home → Medical List → Select Medical → Product List → Select Products → Final Order → Submit Order`
-
-Do not jump directly from Home to Final Order. Browser Back should return through the normal sequence.
-
-## FINAL DAILY CALLING FLOW
-
-`Home → Daily Calling → Today's Medicals → Medical Name + Mobile → Tap Mobile → 📞 Call → isCall automatically recorded → Picked / Not Picked`
-
-
-## Product / Database / Deployment
-
-Hind Pharma uses one database per environment:
-
-- **Local:** SQLite for development and testing.
-- **Live:** MySQL on the production hosting server.
-- The same 13 logical tables are used in both environments.
-- Multiple shops/tenants share the production database and are isolated by tenant/business relationships.
-- Do not commit production MySQL credentials to GitHub.
-
-The backend selects the database from `DATABASE_URL`. See `.env.example` for the local and production configuration examples.
-
-**Important:** GitHub Pages is only the static frontend/prototype. The live application uses the same FastAPI backend to serve the frontend and API, connected to the production MySQL database.
-
-## cPanel Production Layout
-
-Clone the repository on the hosting account, then configure the cPanel Python application with:
+Use these values when creating the fresh application:
 
 - Application root: `~/pharmaflow/PharmaFlow/web/Backend`
-- Startup file: `main.py`
-- Application object: `app`
-- Python dependencies: `web/Backend/requirements.txt`
-- Production database: MySQL through `DATABASE_URL`
-- Production auth secret: `HIND_PHARMA_AUTH_SECRET`
-- Demo seed data: `HIND_PHARMA_SEED_DEMO_DATA=false`
+- Startup file: `passenger_wsgi.py`
+- Application entry point: `application`
+- Python version: use the Python version supported by the hosting account
+- Dependencies: install `web/Backend/requirements.txt`
 
-FastAPI serves only the browser-facing `View`, `View Model`, `Assets`, `API`, `Models`, `Helper`, `temp`, and `data` directories. Backend/database source files are not exposed as public static files.
+The Passenger app should be created against the **Backend directory**, not the repository root and not the static `web` directory.
 
-Canonical live routes:
+## Environment variables
 
-- `/` — PharmaFlow Home
-- `/pharmaflow/{customer-slug}` — customer tenant Home
-- `/api/health` — backend health check
-- `/api/...` — application API
+Local:
+
+```
+DATABASE_URL=sqlite:///./hind_pharma.db
+HIND_PHARMA_ENV=development
+HIND_PHARMA_SEED_DEMO_DATA=true
+HIND_PHARMA_AUTH_SECRET=<local-secret>
+```
+
+Production:
+
+```
+DATABASE_URL=mysql+pymysql://<user>:<password>@<mysql-host>:3306/<database>
+HIND_PHARMA_ENV=production
+HIND_PHARMA_SEED_DEMO_DATA=false
+HIND_PHARMA_AUTH_SECRET=<long-random-secret>
+```
+
+Never commit the production MySQL password or auth secret.
+
+## Health check
+
+Once Passenger is running:
+
+`GET /api/health`
+
+Expected response includes:
+
+```json
+{
+  "status": "ok",
+  "product": "PharmaFlow",
+  "brand": "Hind HealthCare"
+}
+```
+
+The exact `database` field identifies whether the running process selected SQLite or MySQL.
+
+## Tenant routes
+
+Public tenant route pattern:
+
+`/pharmaflow/{customer-slug}`
+
+Example:
+
+`/pharmaflow/hind-pharma`
+
+Protected application APIs use the authenticated tenant/business relationship; the URL slug is not a permission mechanism.
+
+## Fresh deployment rule
+
+For the new deployment, do not copy the previous cPanel Python environment, `.htaccess`, generated `.pyc`, local SQLite database, or old Passenger process settings.
+
+Deploy the repository into a clean directory, create a new Python application/virtual environment, configure MySQL, install dependencies, then restart Passenger.
+
+GitHub Pages remains a static prototype only; it is not the production FastAPI host.
