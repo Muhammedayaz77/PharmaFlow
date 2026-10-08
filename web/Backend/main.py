@@ -543,28 +543,33 @@ try:
     from .tenant_routes import register as register_tenant_routes
 except ImportError:
     from tenant_routes import register as register_tenant_routes
+
 register_tenant_routes(app)
 
-# Public tenant URLs are resolved to the shared PharmaFlow Home template.
-# Static files remain available from /View, /Assets, /API, /Helper, etc.
-@app.get('/pharmaflow', include_in_schema=False)
-@app.get('/pharmaflow/{slug}', include_in_schema=False)
-def pharmaflow_home(slug: str = 'hind-pharma'):
-    return FileResponse(FRONTEND_INDEX)
+# Public tenant routes use the same shared frontend entry point.
+# Tenant identity is validated by the API; the URL slug is only routing context.
+FRONTEND_INDEX = WEB_ROOT / 'View' / 'index.html'
 
-# Expose only browser-facing files; never expose Backend, database or project internals.
+if FRONTEND_INDEX.exists():
+    @app.get('/pharmaflow', include_in_schema=False)
+    @app.get('/pharmaflow/{slug}', include_in_schema=False)
+    def pharmaflow_home(slug: str = 'hind-pharma'):
+        return FileResponse(FRONTEND_INDEX)
+
+    @app.get('/', include_in_schema=False)
+    def frontend_root():
+        return FileResponse(FRONTEND_INDEX)
+
+# Serve only the browser-facing web folders. Backend source/database files are not mounted.
 for _public_path in ('View', 'View Model', 'Assets', 'API', 'Models', 'Helper', 'temp', 'data'):
-    app.mount(
-        f'/{_public_path}',
-        StaticFiles(directory=WEB_ROOT / _public_path),
-        name=f'frontend_{_public_path.lower().replace(" ", "_")}',
-    )
-
-@app.get('/', include_in_schema=False)
-def frontend_root():
-    return FileResponse(FRONTEND_INDEX)
+    _directory = WEB_ROOT / _public_path
+    if _directory.exists():
+        app.mount(
+            f'/{_public_path}',
+            StaticFiles(directory=_directory),
+            name=f'frontend_{_public_path.lower().replace(" ", "_")}',
+        )
 
 if __name__ == '__main__':
     import uvicorn
     uvicorn.run('main:app', host='127.0.0.1', port=8000, reload=True)
-
